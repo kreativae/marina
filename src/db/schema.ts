@@ -7,6 +7,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ─── MÓDULO A — CRM / PROCESSOS COMERCIAIS ──────────────────────────────────
@@ -70,13 +71,18 @@ export const deals = pgTable("deals", {
   value: integer("value").notNull().default(0), // em cêntimos
   // mbway | transferencia | hotmart | cartao | outro
   paymentMethod: text("payment_method").notNull().default(""),
+  externalReference: text("external_reference"),
   expectedCloseDate: date("expected_close_date", { mode: "string" }),
   // novo-lead | contactado | interessado | proposta | pagamento | entregue | pos-venda
   stage: text("stage").notNull().default("novo-lead"),
   staleDays: integer("stale_days").notNull().default(7),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  externalReferenceUnique: uniqueIndex("deals_external_reference_unique").on(
+    table.externalReference
+  ),
+}));
 
 // ─── AGENDA (A3/A4/A5) ───────────────────────────────────────────────────────
 
@@ -121,11 +127,37 @@ export const bookings = pgTable("bookings", {
   // confirmado | concluido | cancelado
   status: text("status").notNull().default("confirmado"),
   zoomLink: text("zoom_link"),
-  googleSynced: boolean("google_synced").notNull().default(true),
-  zoomSentEmail: boolean("zoom_sent_email").notNull().default(true),
+  zoomMeetingId: text("zoom_meeting_id"),
+  googleEventId: text("google_event_id"),
+  googleSynced: boolean("google_synced").notNull().default(false),
+  zoomSentEmail: boolean("zoom_sent_email").notNull().default(false),
   linkSentWhatsapp: boolean("link_sent_whatsapp").notNull().default(false),
+  whatsappOptIn: boolean("whatsapp_opt_in").notNull().default(false),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const hotmartEvents = pgTable(
+  "hotmart_events",
+  {
+    id: serial("id").primaryKey(),
+    transactionId: text("transaction_id").notNull(),
+    event: text("event").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    transactionEventUnique: uniqueIndex(
+      "hotmart_events_transaction_event_unique"
+    ).on(table.transactionId, table.event),
+  })
+);
+
+export const integrationCredentials = pgTable("integration_credentials", {
+  provider: text("provider").primaryKey(),
+  accessTokenEncrypted: text("access_token_encrypted").notNull(),
+  refreshTokenEncrypted: text("refresh_token_encrypted").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // ─── MÓDULO B — MARKETING ────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import {
   CalendarDays,
@@ -13,6 +13,7 @@ import {
   Mail,
   Megaphone,
   Menu,
+  LogOut,
   Plug,
   Search,
   Users,
@@ -121,12 +122,19 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
   const today = new Date().toLocaleDateString("pt-PT", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f2f3]">
@@ -171,9 +179,16 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <span className="hidden rounded-full bg-purple-soft px-3.5 py-1.5 text-xs font-bold text-purple sm:block">
               Preto · Branco · #800080
             </span>
-            <span className="grid size-10 place-items-center rounded-full bg-ink text-sm font-bold text-white">
-              ML
-            </span>
+            <button
+              type="button"
+              onClick={logout}
+              title="Terminar sessão"
+              aria-label="Terminar sessão"
+              className="group relative grid size-10 place-items-center rounded-full bg-ink text-sm font-bold text-white"
+            >
+              <span className="group-hover:hidden">ML</span>
+              <LogOut className="hidden size-4 group-hover:block" />
+            </button>
           </div>
         </header>
         <main className="p-5 sm:p-8">{children}</main>

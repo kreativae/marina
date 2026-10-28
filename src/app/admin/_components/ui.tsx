@@ -29,14 +29,19 @@ export function PageHeader({
 export function Card({
   children,
   className,
+  tone = "default",
 }: {
   children: ReactNode;
   className?: string;
+  tone?: "default" | "dark";
 }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-ink/8 bg-white shadow-sm shadow-ink/4",
+        "rounded-2xl border shadow-sm",
+        tone === "dark"
+          ? "border-white/10 bg-ink text-white shadow-black/10"
+          : "border-ink/8 bg-white shadow-ink/4",
         className
       )}
     >

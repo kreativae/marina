@@ -236,7 +236,7 @@ export default function RemarketingPage() {
       )}
 
       {/* Nota de identidade */}
-      <Card className="mt-6 flex flex-wrap items-center gap-4 bg-ink p-5 text-white">
+      <Card tone="dark" className="mt-6 flex flex-wrap items-center gap-4 p-5">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-purple">
           <Mail className="size-5" />
         </span>

@@ -34,8 +34,16 @@ type BookingResult = {
     date: string;
     startTime: string;
     zoomLink: string | null;
+    googleSynced: boolean;
+    zoomSentEmail: boolean;
+    linkSentWhatsapp: boolean;
   };
   eventType: EventType;
+  integrations: {
+    id: string;
+    status: "sent" | "pending" | "skipped" | "error";
+    message: string;
+  }[];
 };
 
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -50,6 +58,7 @@ export default function AgendarPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [whatsappOptIn, setWhatsappOptIn] = useState(false);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,8 +79,6 @@ export default function AgendarPage() {
 
   useEffect(() => {
     if (!type || !date) return;
-    setSlots(null);
-    setSlot(null);
     fetch(`/api/availability?date=${date}&eventTypeId=${type.id}`)
       .then((r) => r.json())
       .then((d) => setSlots(d.slots ?? []))
@@ -93,6 +100,7 @@ export default function AgendarPage() {
           name,
           email,
           phone,
+          whatsappOptIn,
           notes,
         }),
       });
@@ -148,9 +156,8 @@ export default function AgendarPage() {
             Agendar uma <em className="italic text-grape">sessão.</em>
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-white/60">
-            Escolhe o serviço, o dia e a hora. A sala Zoom é criada
-            automaticamente e o link chega-te por e-mail — com reforço por
-            WhatsApp.
+            Escolhe o serviço, o dia e a hora. Os serviços externos são
+            confirmados após o agendamento e dependem da configuração da conta.
           </p>
           <ol className="mt-9 space-y-4">
             {[
@@ -187,16 +194,15 @@ export default function AgendarPage() {
           </ol>
           <div className="mt-10 space-y-3 border-t border-white/10 pt-6 text-xs text-white/50">
             <p className="flex items-center gap-2">
-              <Video className="size-4 text-grape" /> Zoom: sala criada
-              automaticamente
+              <Video className="size-4 text-grape" /> Sala Zoom quando ligada
             </p>
             <p className="flex items-center gap-2">
-              <CalendarDays className="size-4 text-grape" /> Sincronizado com o
-              Google Calendar da Marina
+              <CalendarDays className="size-4 text-grape" /> Google Calendar
+              quando ligado
             </p>
             <p className="flex items-center gap-2">
-              <Mail className="size-4 text-grape" /> Confirmação por e-mail +
-              WhatsApp
+              <Mail className="size-4 text-grape" /> E-mail e WhatsApp conforme
+              configuração e consentimento
             </p>
           </div>
         </aside>
@@ -224,6 +230,8 @@ export default function AgendarPage() {
                     key={t.id}
                     onClick={() => {
                       setType(t);
+                      setSlots(null);
+                      setSlot(null);
                       setStep(2);
                     }}
                     className="group flex w-full items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-paper p-5 text-left transition hover:border-purple hover:bg-purple-soft"
@@ -267,7 +275,11 @@ export default function AgendarPage() {
                   return (
                     <button
                       key={ymd}
-                      onClick={() => setDate(ymd)}
+                      onClick={() => {
+                        setSlots(null);
+                        setSlot(null);
+                        setDate(ymd);
+                      }}
                       className={cn(
                         "flex flex-col items-center rounded-xl border px-1 py-2.5 transition",
                         active
@@ -377,12 +389,30 @@ export default function AgendarPage() {
                     </label>
                     <input
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        if (!e.target.value.trim()) setWhatsappOptIn(false);
+                      }}
                       placeholder="+351 …"
                       className="mt-1.5 w-full rounded-xl border border-ink/12 bg-paper px-4 py-3 text-sm"
                     />
                   </div>
                 </div>
+                <label className="flex items-start gap-3 text-xs leading-relaxed text-ink/60">
+                  <input
+                    type="checkbox"
+                    checked={whatsappOptIn}
+                    onChange={(e) => setWhatsappOptIn(e.target.checked)}
+                    disabled={!phone.trim()}
+                    className="mt-0.5 size-4 accent-purple"
+                  />
+                  <span>
+                    Aceito receber a confirmação deste agendamento por
+                    WhatsApp. O envio só ocorre se o serviço estiver
+                    configurado; posso retirar o consentimento a qualquer
+                    momento.
+                  </span>
+                </label>
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-ink/50">
                     Notas (opcional)
@@ -429,7 +459,8 @@ export default function AgendarPage() {
                 <CheckCircle2 className="size-8 text-purple" />
               </span>
               <h2 className="font-display mt-5 text-3xl font-semibold">
-                Está <em className="text-purple italic">agendado!</em>
+                Pedido de sessão{" "}
+                <em className="text-purple italic">recebido.</em>
               </h2>
               <p className="mt-2 text-ink/60">
                 {result.eventType.name} · {formatDate(result.booking.date)} às{" "}
@@ -440,41 +471,63 @@ export default function AgendarPage() {
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink/50">
                   <Video className="size-4 text-purple" /> Sala Zoom
                 </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <code className="flex-1 truncate rounded-lg bg-white px-3 py-2.5 text-xs ring-1 ring-ink/10">
-                    {result.booking.zoomLink}
-                  </code>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        result.booking.zoomLink ?? ""
-                      );
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1500);
-                    }}
-                    className="grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-white transition hover:bg-purple"
-                    aria-label="Copiar link"
-                  >
-                    {copied ? (
-                      <Check className="size-4" />
-                    ) : (
-                      <Copy className="size-4" />
-                    )}
-                  </button>
-                </div>
+                {result.booking.zoomLink ? (
+                  <div className="mt-2 flex items-center gap-2">
+                    <a
+                      href={result.booking.zoomLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 truncate rounded-lg bg-white px-3 py-2.5 text-xs text-purple underline ring-1 ring-ink/10"
+                    >
+                      {result.booking.zoomLink}
+                    </a>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(result.booking.zoomLink!);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      }}
+                      className="grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-white transition hover:bg-purple"
+                      aria-label="Copiar link"
+                    >
+                      {copied ? (
+                        <Check className="size-4" />
+                      ) : (
+                        <Copy className="size-4" />
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-amber-800">
+                    Sala ainda não criada. A Marina confirmará o link.
+                  </p>
+                )}
                 <ul className="mt-4 space-y-2 text-xs leading-relaxed text-ink/60">
                   <li className="flex gap-2">
                     <Mail className="mt-0.5 size-3.5 shrink-0 text-purple" />
-                    O link foi enviado automaticamente para o teu e-mail.
+                    {result.booking.zoomSentEmail
+                      ? "Confirmação enviada por e-mail."
+                      : "Confirmação por e-mail pendente."}
                   </li>
                   <li className="flex gap-2">
                     <MessageCircle className="mt-0.5 size-3.5 shrink-0 text-purple" />
-                    Recebes um lembrete por WhatsApp antes da sessão.
+                    {result.booking.linkSentWhatsapp
+                      ? "Confirmação enviada por WhatsApp."
+                      : whatsappOptIn
+                        ? "WhatsApp pendente de configuração."
+                        : "Não foi solicitado contacto por WhatsApp."}
                   </li>
                   <li className="flex gap-2">
                     <CalendarDays className="mt-0.5 size-3.5 shrink-0 text-purple" />
-                    O evento já está no Google Calendar da Marina.
+                    {result.booking.googleSynced
+                      ? "Evento criado no Google Calendar."
+                      : "Sincronização com Google Calendar pendente."}
                   </li>
+                </ul>
+                <ul className="mt-4 space-y-1 border-t border-ink/10 pt-3 text-xs text-ink/55">
+                  {result.integrations.map((integration) => (
+                    <li key={integration.id}>{integration.message}</li>
+                  ))}
                 </ul>
               </div>
 

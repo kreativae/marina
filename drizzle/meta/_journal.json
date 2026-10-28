@@ -8,6 +8,13 @@
       "when": 1793185688086,
       "tag": "0000_outstanding_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793188775349,
+      "tag": "0001_shiny_scalphunter",
+      "breakpoints": true
     }
   ]
 }
