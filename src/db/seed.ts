@@ -29,6 +29,16 @@ function ymd(offset: number) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("The demo seed cannot run in production.");
+  }
+
+  if (process.env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error(
+      "This demo seed deletes existing data. Set ALLOW_DESTRUCTIVE_SEED=true to continue."
+    );
+  }
+
   console.log("A limpar tabelas…");
   await db.delete(contactTags);
   await db.delete(interactions);
